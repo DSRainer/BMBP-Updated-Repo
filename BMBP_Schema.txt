@@ -1,0 +1,186 @@
+ User Flow Analysis
+
+
+  Here is the step-by-step journey a user takes through your application:
+
+
+   1. Landing and Discovery: The user arrives on the Index page, where they see various products and categories. They can navigate to a ViewAll page to see all products within a specific
+      category (e.g., "Themes", "Mascots").
+   2. Product Details: The user clicks on a product and is taken to the ProductDetail page. Here they see all the information about a single "base product" (e.g., "Simple Spiderman Theme
+      Decoration").
+   3. Choice of Purchase Style: On the ProductDetail page, the user is presented with two main choices:
+       * "Choose your Package": This opens the PackageSelector modal. The user can select a predefined package (e.g., "Gold", "Diamond") which bundles various services.
+       * "Go A La Carte": This allows the user to buy the base product and customize it with optional add-ons.
+   4. Customization:
+       * Whether they choose a package or go a la carte, a CustomizationModal appears.
+       * This modal allows the user to select and add quantities of individual "Add-ons" (like a "Tattoo Artist" or "Magician"). If a package was pre-selected, its features are likely
+         pre-filled or noted here.
+   5. Add to Cart: After making their selections, the user clicks "Add to Cart". The CartContext is updated with a single complex cart item that includes:
+       * The base Product.
+       * The list of selected AddOns with their quantities.
+       * The selected Package, if any.
+   6. Cart and Checkout: The user navigates to the /cart page.
+       * They see a summary of their order, including the base product, selected package, and all add-ons.
+       * They can adjust quantities of add-ons or remove items entirely.
+       * They fill out a detailed form with personal information, event details, and address.
+       * Finally, they proceed to payment.
+
+  In-Depth Database Schema
+
+
+  Based on this flow, here is a detailed database schema designed for integrity, scalability, and to perfectly match your application's logic. It is fundamentally similar to the previous
+  recommendation but is now further refined and explained in the context of your specific implementation.
+
+  ---
+
+  Core Tables
+
+  These tables store the fundamental entities of your application.
+
+  │ `country`        │ `VARCHAR(50)`  │ `NOT NULL`              │                                       │
+  1. `Users`
+   * Purpose: Stores customer information for order tracking and communication.
+   * Corresponds to: The "Personal Information" form in Cart.tsx.
+
+
+
+  ┌─────────────────┬────────────────┬──────────────────────┬───────────────────────────────────────────┐
+  │ Column Name     │ Data Type      │ Constraints          │ Description                               │
+  ├─────────────────┼────────────────┼──────────────────────┼───────────────────────────────────────────┤
+  │ `user_id`       │ `INT` / `UUID` │ **Primary Key**      │ Unique identifier for each user.          │
+  │ `email`         │ `VARCHAR(255)` │ `UNIQUE`, `NOT NULL` │ User's email for login and notifications. │
+  │ `password_hash` │ `VARCHAR(255)` │ `NOT NULL`           │ Hashed password for security.             │
+  │ `full_name`     │ `VARCHAR(255)` │ `NOT NULL`           │ User's full name.                         │
+  │ `phone_number`  │ `VARCHAR(20)`  │ `NOT NULL`           │ User's contact number.                    │
+  │ `created_at`    │ `TIMESTAMP`    │ `DEFAULT NOW()`      │ When the account was created.             │
+  └─────────────────┴────────────────┴──────────────────────┴───────────────────────────────────────────┘
+
+
+  2. `Categories`
+   * Purpose: Organizes all sellable items for filtering and navigation.
+   * Corresponds to: The cuisines array in products.ts (e.g., "Themes", "Mascots", "Baby Shower").
+
+
+
+  ┌───────────────┬────────────────┬──────────────────────┬────────────────────────────────────────┐
+  │ Column Name   │ Data Type      │ Constraints          │ Description                            │
+  ├───────────────┼────────────────┼──────────────────────┼────────────────────────────────────────┤
+  │ `category_id` │ `INT`          │ **Primary Key**      │ Unique ID for the category.            │
+  │ `name`        │ `VARCHAR(100)` │ `UNIQUE`, `NOT NULL` │ Name of the category.                  │
+  │ `description` │ `TEXT`         │                      │ Optional description for the category. │
+  └───────────────┴────────────────┴──────────────────────┴────────────────────────────────────────┘
+
+
+  3. `Products`
+   * Purpose: The master table for every item that can be sold, whether it's a base theme, a mascot, or an individual add-on service. This is key for inventory and management.
+   * Corresponds to: The objects in products.ts and the "Add-ons" in CustomizationModal.tsx.
+
+
+
+  ┌────────────────┬──────────────────┬──────────────────────────────┬────────────────────────────────────────────────────────────────────────────┐
+  │ Column Name    │ Data Type        │ Constraints                  │ Description                                                                │
+  ├────────────────┼──────────────────┼──────────────────────────────┼────────────────────────────────────────────────────────────────────────────┤
+  │ `product_id`   │ `INT`            │ **Primary Key**              │ Unique ID for the product/service.                                         │
+  │ `category_id`  │ `INT`            │ **Foreign Key (Categories)** │ Links this product to a category.                                          │
+  │ `product_type` │ `VARCHAR(50)`    │ `NOT NULL`                   │ Type of product (e.g., 'BASE', 'ADD_ON'). This is critical for your logic. │
+  │ `name`         │ `VARCHAR(255)`   │ `NOT NULL`                   │ "Simple Spiderman Theme", "Tattoo Artist", etc.                            │
+  │ `description`  │ `TEXT`           │                              │ Detailed description.                                                      │
+  │ `price`        │ `DECIMAL(10, 2)` │ `NOT NULL`                   │ Price for this single item.                                                │
+  │ `image_url`    │ `VARCHAR(255)`   │                              │ URL for the product image.                                                 │
+  │ `is_active`    │ `BOOLEAN`        │ `DEFAULT true`               │ To show/hide products from the store.                                      │
+  └────────────────┴──────────────────┴──────────────────────────────┴────────────────────────────────────────────────────────────────────────────┘
+
+  4. `Packages`
+   * Purpose: Stores the predefined packages like "Silver", "Gold", etc.
+   * Corresponds to: The packages array in PackageSelector.tsx.
+
+
+
+  ┌───────────────┬──────────────────┬──────────────────────┬────────────────────────────────────────────┐
+  │ Column Name   │ Data Type        │ Constraints          │ Description                                │
+  ├───────────────┼──────────────────┼──────────────────────┼────────────────────────────────────────────┤
+  │ `package_id`  │ `INT`            │ **Primary Key**      │ Unique ID for the package.                 │
+  │ `name`        │ `VARCHAR(100)`   │ `UNIQUE`, `NOT NULL` │ "Silver", "Gold", "Diamond", etc.          │
+  │ `description` │ `TEXT`           │                      │ Description of the package.                │
+  │ `total_price` │ `DECIMAL(10, 2)` │ `NOT NULL`           │ The special bundled price for the package. │
+  │ `is_active`   │ `BOOLEAN`        │ `DEFAULT true`       │ To show/hide packages.                     │
+  └───────────────┴──────────────────┴──────────────────────┴────────────────────────────────────────────┘
+
+  ---
+
+  Relationship & Order Tables
+
+  These tables connect the core entities and build the ordering system.
+
+
+  5. `Package_Items` (Many-to-Many)
+   * Purpose: Defines which "add-on" type products are included in each package.
+   * Corresponds to: The features array for each package in PackageSelector.tsx.
+
+
+
+  ┌──────────────┬───────────┬────────────────────────────────┬─────────────────────────────────────────────┐
+  │ Column Name  │ Data Type │ Constraints                    │ Description                                 │
+  ├──────────────┼───────────┼────────────────────────────────┼─────────────────────────────────────────────┤
+  │ `package_id` │ `INT`     │ **Primary Key, FK (Packages)** │ The package being defined.                  │
+  │ `product_id` │ `INT`     │ **Primary Key, FK (Products)** │ The add-on product included in the package. │
+  └──────────────┴───────────┴────────────────────────────────┴─────────────────────────────────────────────┘
+
+  ├───────────────────────┼──────────────────┼─────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────┤
+  6. `Orders`
+   * Purpose: A record for every checkout initiated by a user.
+   * Corresponds to: The entire form in Cart.tsx.
+
+
+
+  ┌────────────────────┬──────────────────┬─────────────────────────┬───────────────────────────────────────────────┐
+  │ Column Name        │ Data Type        │ Constraints             │ Description                                   │
+  ├────────────────────┼──────────────────┼─────────────────────────┼───────────────────────────────────────────────┤
+  │ `order_id`         │ `INT`            │ **Primary Key**         │ Unique ID for the order.                      │
+  │ `user_id`          │ `INT` / `UUID`   │ **Foreign Key (Users)** │ The customer who placed the order.            │
+  │ `order_date`       │ `TIMESTAMP`      │ `DEFAULT NOW()`         │ When the order was placed.                    │
+  │ `event_date`       │ `DATE`           │ `NOT NULL`              │ The date of the party/event.                  │
+  │ `event_time`       │ `TIME`           │ `NOT NULL`              │ The time of the party/event.                  │
+  │ `delivery_address` │ `TEXT`           │ `NOT NULL`              │ Full delivery address.                        │
+  │ `guest_count`      │ `INT`            │                         │ Number of guests.                             │
+  │ `total_amount`     │ `DECIMAL(10, 2)` │ `NOT NULL`              │ Final calculated price of the entire order.   │
+  │ `status`           │ `VARCHAR(50)`    │ `DEFAULT 'pending'`     │ 'pending', 'paid', 'processing', 'delivered'. │
+  │ `notes`            │ `TEXT`           │                         │ Special requests from the user.               │
+  └────────────────────┴──────────────────┴─────────────────────────┴───────────────────────────────────────────────┘
+
+
+  7. `Order_Items`
+   * Purpose: The most important table for order details. It stores every single item associated with an order, including the base product and all selected add-ons.
+   * Corresponds to: The items in the cartItems array in CartContext.tsx.
+
+
+
+  ┌─────────────────────┬──────────────────┬────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Column Name         │ Data Type        │ Constraints                │ Description                                                                                      │
+  ├─────────────────────┼──────────────────┼────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ `order_item_id`     │ `INT`            │ **Primary Key**            │ Unique ID for this line item.                                                                    │
+  │ `order_id`          │ `INT`            │ **Foreign Key (Orders)**   │ Links this item to a specific order.                                                             │
+  │ `product_id`        │ `INT`            │ **Foreign Key (Products)** │ The product that was purchased (base or add-on).                                                 │
+  │ `quantity`          │ `INT`            │ `NOT NULL`                 │ Quantity of this specific item.                                                                  │
+  │ `price_at_purchase` │ `DECIMAL(10, 2)` │ `NOT NULL`                 │ The price of the item when the order was placed.                                                 │
+  │ `parent_product_id` │ `INT`            │ `FK (Products), NULL`      │ If this item is an add-on, this links to its base product. `NULL` if it's a base product itself. │
+  │ `package_id`        │ `INT`            │ `FK (Packages), NULL`      │ If this order was part of a package deal, this links to the package.                             │
+  └─────────────────────┴──────────────────┴────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+  How This Schema Supports Your Flow & Scalability:
+
+
+   * Flexibility: By classifying products with a product_type ('BASE' vs 'ADD_ON'), you can easily query for all available add-ons without hardcoding IDs. The `parent_product_id` in
+     `Order_Items` clearly links add-ons to their base products within an order, perfectly mirroring your cart's structure.
+   * Integrity: Using foreign keys ensures that you can't have orders for non-existent products or users. Storing price_at_purchase guarantees that historical order totals remain correct even
+     if you change product prices later.
+   * Scalability (for 100+ concurrent users):
+       1. Indexing is Mandatory: You must create indexes on all Foreign Key columns (user_id, category_id, order_id, etc.) and any columns used frequently for lookups (Users.email,
+          Orders.status). This is the most critical step for handling concurrent reads and writes efficiently.
+       2. Normalized Structure: This design avoids data duplication. Updating a product's name only requires changing it in one place (Products table), which is fast and prevents
+          inconsistencies.
+       3. Efficient Queries: The structure is optimized for common queries:
+           * Get all details for an order? JOIN Orders with Order_Items and Products on their indexed keys.
+           * Find all "add-on" products? SELECT * FROM Products WHERE product_type = 'ADD_ON'.
+           * What's in the "Gold" package? JOIN Packages with Package_Items and Products.
